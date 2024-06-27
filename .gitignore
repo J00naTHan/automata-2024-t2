@@ -1,3 +1,9 @@
+# pycharm files
+.idea
+
+# virtual environments
+venv
+
 # project configuration
 .exercicio_zero/project
 
