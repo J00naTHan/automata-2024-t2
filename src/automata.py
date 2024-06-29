@@ -160,12 +160,12 @@ def convert_to_dfa(automata):
 def epsilon_closures(Q, q0, delta, epsilon_symbol='&'):
     """Encontra feixes epsilon para um automato"""
 
-    q0, e_closures = '', {}
+    e_q0, e_closures = '', {}
     for q in Q:
         e_closure = [q]
+        epsilon_rules = None
         for q in e_closure:
             try:
-                # calcular múltiplos epsilon transitions que podem levar para vários estados a mais
                 epsilon_rules = delta[q][epsilon_symbol]
                 for qf in epsilon_rules:
                     if qf not in e_closure:
@@ -176,9 +176,9 @@ def epsilon_closures(Q, q0, delta, epsilon_symbol='&'):
             if q == q0:
                 for q in e_closure:
                     if q == e_closure[-1]:
-                        q0 += f'{q}'
+                        e_q0 += f'{q}'
                     else:
-                        q0 += f'{q}_'
+                        e_q0 += f'{q}_'
             e_closure = set(e_closure)
             e_closures[q] = e_closure
-    return q0, e_closures
+    return e_q0, e_closures
