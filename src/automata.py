@@ -47,28 +47,27 @@ def load_automata(filename, epsilon_symbol='&'):
             automata['sigma'] = lines[0].strip().split(' ')
             automata['is_nfa'] = epsilon_symbol in automata['sigma']
             automata['Q'] = set(lines[1].strip().split(' '))
-            F = lines[2].strip().split(' ')
-            for q in F:
+            for q in lines[2].strip().split(' '):
                 if q not in automata['Q']:
                     raise Exception(f'final state {q} not in Q')
-            automata['F'] = set(F)
+            automata['F'] = set(lines[2].strip().split(' '))
             if lines[3].strip() in automata['Q']:
                 automata['q0'] = lines[3].strip()
             else:
                 raise Exception('initial state not in Q')
-            for line in lines[4:]:
-                line = line.strip().split(' ')
-                if len(line) == 3:
-                    if line[0] in automata['Q'] and line[2] in automata['Q'] and line[1] in automata['sigma']:
-                        if line[0] not in delta:
-                            delta[line[0]] = {}
+            for rule in lines[4:]:
+                rule = rule.strip().split(' ')
+                if len(rule) == 3:
+                    if rule[0] in automata['Q'] and rule[2] in automata['Q'] and rule[1] in automata['sigma']:
+                        if rule[0] not in delta:
+                            delta[rule[0]] = {}
                         try:
-                            rule = delta[line[0]][line[1]]
-                            rule.append(line[2])
+                            rule = delta[rule[0]][rule[1]]
+                            rule.append(rule[2])
+                            if automata['is_nfa'] is False:
+                                automata['is_nfa'] = True
                         except KeyError:
-                            delta[line[0]][line[1]] = [line[2]]
-                        if automata['is_nfa'] is False and delta[line[0]][line[1]]:
-                            automata['is_nfa'] = True
+                            delta[rule[0]][rule[1]] = [rule[2]]
                     else:
                         raise Exception('transition rule states or symbol not valid')
                 else:
@@ -79,7 +78,6 @@ def load_automata(filename, epsilon_symbol='&'):
         return automata
     except FileNotFoundError:
         raise Exception('file not found')
-
 
 
 def process(automata, words):
@@ -94,7 +92,7 @@ def process(automata, words):
           if not isinstance(w, str):
               raise Exception('word type should be <str>')
   else:
-      raise Exception('automata expected type <dict>, received <{type(automata)}>, words expected type <list>, received <{type(words)}>')
+      raise Exception(f'automata expected type <dict>, received type <{type(automata)}>, words expected type <list>, received type <{type(words)}>')
 
   try:
       Q = automata['Q']
@@ -107,8 +105,7 @@ def process(automata, words):
 
   response = []
   for word in words:
-      container = None
-      actual_q = q0
+      container, actual_q = None, q0
       for char in word:
           if container:
               break
@@ -130,7 +127,7 @@ def process(automata, words):
   return dict(response)
 
 
-def convert_to_dfa(automata):
+def convert_to_dfa(automata, epsilon_symbol='&'):
     """Converte um NFA num DFA."""
 
     if isinstance(automata, dict):
@@ -141,21 +138,49 @@ def convert_to_dfa(automata):
             F = automata['F']
             delta = automata['delta']
         except KeyError:
-            raise Exception('automata not complete')
+            raise Exception('automata is not a 5-uple')
     else:
-        raise Exception(f'automata expected type: <dict>\nautomata received type: <{type(automata)}>')
+        raise Exception(f'automata expected type: <dict>, received type: <{type(automata)}>')
 
     q0, e_closures = epsilon_closures(Q, q0, delta)
 
+    # falta adicionar as regras do novo automato
+
+    n_sigma = []
+    for symbol in sigma:
+        if symbol != epsilon_symbol:
+            n_sigma.append(symbol)
+
+    nQ_set = [set(q0.split('_'))]
     nQ = [q0]
     for q in nQ:
-        for symbol in automata['sigma']:
-            try:
-                for rule in automata['rules'][q][symbol]:
-                    if rule not in nQ:
-                        nQ.append(rule)
-            except KeyError:
-                pass
+        for symbol in n_sigma:
+            q = q.split('_')
+            nq, q_rules, q_closure = '', [], set()
+            for sub_q in q:
+                try:
+                    for rule in delta[sub_q][symbol]:
+                        q_rules.append(rule)
+                except KeyError:
+                    None
+                q_closure = q_closure.union(e_closures[sub_q])
+            nq_set = q_closure.union(set(q_rules))
+            if nq_set in nQ_set:
+                continue
+            nQ_set.union(nq_set)
+            nq_set = list(nq_set)
+            for q in nq_set:
+                if q == nq_set[-1]:
+                    nq += q
+                else:
+                    nq += f'{q}_'
+            nQ.append(nq)
+    nF = []
+    for q in nQ:
+        for qf in F:
+            if qf in q:
+                nF.append(q)
+    nF = set(nF)
 
 
 def epsilon_closures(Q, q0, delta, epsilon_symbol='&'):
