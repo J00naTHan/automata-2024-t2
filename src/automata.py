@@ -39,94 +39,95 @@ def load_automata(filename, epsilon_symbol='&'):
         if not filename.endswith('.txt'):
             filename += '.txt'
     else:
-        raise Exception('The filename type should be: str')
+        raise Exception(f'filename expected type <str>, received type <{type(filename)}>')
 
     try:
         with open(filename, "rt") as file:
             lines, delta = file.readlines(), {}
             automata['sigma'] = lines[0].strip().split(' ')
-            automata['is_nfa'] = True if epsilon_symbol in automata['sigma'] else False
+            automata['is_nfa'] = epsilon_symbol in automata['sigma']
             automata['Q'] = set(lines[1].strip().split(' '))
             F = lines[2].strip().split(' ')
             for q in F:
                 if q not in automata['Q']:
-                    raise Exception('Final states has to be existing states')
+                    raise Exception(f'final state {q} not in Q')
             automata['F'] = set(F)
             if lines[3].strip() in automata['Q']:
                 automata['q0'] = lines[3].strip()
             else:
-                raise Exception('initial state has to be an existing state')
+                raise Exception('initial state not in Q')
             for line in lines[4:]:
                 line = line.strip().split(' ')
                 if len(line) == 3:
                     if line[0] in automata['Q'] and line[2] in automata['Q'] and line[1] in automata['sigma']:
+                        if line[0] not in delta:
+                            delta[line[0]] = {}
+                        try:
+                            rule = delta[line[0]][line[1]]
+                            rule.append(line[2])
+                        except KeyError:
+                            delta[line[0]][line[1]] = [line[2]]
                         if automata['is_nfa'] is False and delta[line[0]][line[1]]:
                             automata['is_nfa'] = True
-                        delta[line[0]][line[1]] = line[2]
                     else:
-                        raise Exception('the states or the symbol for this transition is not valid')
+                        raise Exception('transition rule states or symbol not valid')
                 else:
-                    raise Exception('transition rules have 3 (three) parameters')
+                    raise Exception('transition rule has more or less than 3 parameters')
             automata['delta'] = delta
+        if automata['is_nfa'] is True:
+          automata = convert_to_dfa(automata)
         return automata
     except FileNotFoundError:
         raise Exception('file not found')
 
 
+
 def process(automata, words):
-    """
-    Processa a lista de palavras e retora o resultado.
-    
-    Os resultados válidos são ACEITA, REJEITA, INVALIDA.
-    """
+  """
+  Processa a lista de palavras e retora o resultado.
 
-    if isinstance(automata, dict) and isinstance(words, list):
-        for w in words:
-            if not isinstance(w, str):
-                raise Exception('word type should be <str>')
-    else:
-        raise Exception('automata type should be <dict> and words type should be <str>')
+  Os resultados válidos são ACEITA, REJEITA, INVALIDA.
+  """
 
-    try:
-        is_nfa = automata['is_nfa']
-    except KeyError:
-        raise Exception('the determinism of this automata is not determinable')
+  if isinstance(automata, dict) and isinstance(words, list):
+      for w in words:
+          if not isinstance(w, str):
+              raise Exception('word type should be <str>')
+  else:
+      raise Exception('automata expected type <dict>, received <{type(automata)}>, words expected type <list>, received <{type(words)}>')
 
-    if is_nfa is True:
-        automata = convert_to_dfa(automata)
-    try:
-        Q = automata['Q']
-        sigma = automata['sigma']
-        q0 = automata['q0']
-        F = automata['F']
-        delta = automata['delta']
-    except KeyError:
-        raise Exception('the automata does not match the 5-uple format')
+  try:
+      Q = automata['Q']
+      sigma = automata['sigma']
+      q0 = automata['q0']
+      F = automata['F']
+      delta = automata['delta']
+  except KeyError:
+      raise Exception('automata is not a 5-uple')
 
-    # não muda mais
-    response = []
-    for word in words:
-        container = None
-        actual_q = q0
-        for char in word:
-            if container:
-                break
-            if char not in sigma:
-                container = response.append((word, 'INVALIDA'))
-                break
-            for rule in delta:
-                if rule[0] == aq and rule[1] == char:
-                    aq = rule[2]
-                    break
-            else:
-                container = response.append((word, 'REJEITA'))
-                break
-        else:
-            if actual_q in F:
-                container = response.append((word, 'ACEITA'))
-            else:
-                container = response.append((word, 'REJEITA'))
-    return dict(response)
+  response = []
+  for word in words:
+      container = None
+      actual_q = q0
+      for char in word:
+          if container:
+              break
+          if char not in sigma:
+              container = response.append((word, 'INVALIDA'))
+              break
+          for rule in delta:
+              if rule[0] == actual_q and rule[1] == char:
+                  actual_q = rule[2]
+                  break
+          else:
+              container = response.append((word, 'REJEITA'))
+              break
+      else:
+          if actual_q in F:
+              container = response.append((word, 'ACEITA'))
+          else:
+              container = response.append((word, 'REJEITA'))
+  return dict(response)
 
 
 def convert_to_dfa(automata):
