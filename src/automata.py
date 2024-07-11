@@ -32,7 +32,6 @@ def load_automata(filename):
 
     Caso o arquivo seja inválido uma exceção Exception é gerada.
     """
-
     if isinstance(filename, str):
         automata, epsilon_symbol = {}, '&'
         if not filename.endswith('.txt'):
@@ -88,9 +87,6 @@ def process(automata, words):
 
     Os resultados válidos são ACEITA, REJEITA, INVALIDA.
     """
-
-    print(words)
-
     if isinstance(automata, dict) and isinstance(words, list):
         for w in words:
             if not isinstance(w, str):
@@ -140,8 +136,7 @@ def process(automata, words):
 
 
 def epsilon_closures(Q, q0, delta, epsilon_symbol='&'):
-    """Encontra feixes epsilon para um automato"""
-
+    """Search for epsilon closures in an automata."""
     e_q0, e_closures = '', {}
     for q in Q:
         e_closure = [q]
@@ -166,8 +161,7 @@ def epsilon_closures(Q, q0, delta, epsilon_symbol='&'):
 
 
 def convert_to_dfa(automata):
-    """Converte um NFA num DFA."""
-
+    """Convert an NFA to an DFA."""
     if isinstance(automata, dict):
         epsilon_symbol = '&'
         try:
